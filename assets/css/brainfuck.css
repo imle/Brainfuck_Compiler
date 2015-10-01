@@ -1,0 +1,30 @@
+html,
+body {
+  background-color: darkgrey; }
+
+#brainfuck_container {
+  font-family: Menlo, Arial, sans-serif; }
+  #brainfuck_container .data_cell {
+    float: left;
+    margin-right: 4px;
+    border: 2px solid black;
+    position: relative; }
+    #brainfuck_container .data_cell span {
+      position: absolute;
+      font-size: 8px;
+      top: 1px;
+      left: 1px; }
+    #brainfuck_container .data_cell div {
+      width: 30px;
+      height: 30px;
+      line-height: 30px;
+      text-align: center; }
+      #brainfuck_container .data_cell div.value {
+        border-bottom: 2px solid black; }
+    #brainfuck_container .data_cell.pointed {
+      color: white;
+      border-color: red; }
+      #brainfuck_container .data_cell.pointed .value {
+        border-color: red; }
+
+/*# sourceMappingURL=brainfuck.css.map */
