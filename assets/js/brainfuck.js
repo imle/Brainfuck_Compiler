@@ -1,3 +1,5 @@
+var brainfuck;
+
 Util = {
 	parse: {
 		template: function(template, data) {
@@ -8,33 +10,81 @@ Util = {
 	}
 };
 
-Brainfuck = {
-	array_size: 120,
-	initialize: function() {
-		Brainfuck.GUI.initialize();
-	},
-	GUI: {
+BF = function(size, mode) {
+	var self = this;
+	this.modes = ["wrap", "error"];
+	this.default_mode = 0;
+
+	this.options = {
+		size: size,
+		mode: this.modes.indexOf(mode) !== false ? mode : this.modes[this.default_mode]
+	};
+
+	this.array = new Array(this.options.size);
+
+	this.GUI = {
 		elements: {
 			template: "",
-			$container: null
+			$cells: [],
+			$container: null,
+			$current: null
 		},
 		initialize: function() {
-			Brainfuck.GUI.elements.template = $("#template_bf_column").html();
+			self.GUI.elements.template = $("#template_bf_column").html();
 
-			Brainfuck.GUI.elements.$contianer = $("#brainfuck_container");
+			self.GUI.elements.$contianer = $("#brainfuck_container");
 
 			var html = "";
-			for (var i = 0; i < Brainfuck.array_size; i++) {
-				html += Util.parse.template(Brainfuck.GUI.elements.template, {
+			for (var i = 0; i < self.options.size; i++) {
+				html += Util.parse.template(self.GUI.elements.template, {
 					number: i
 				});
 			}
 
-			Brainfuck.GUI.elements.$contianer.html(html);
+			self.GUI.elements.$contianer.html(html);
+			self.GUI.elements.$cells = self.GUI.elements.$contianer.children();
+			self.GUI.pointer.point(self.GUI.elements.$cells.first());
+		},
+		pointer: {
+			increment: function() {
+				self.GUI.pointer.point(
+						self.GUI.elements.$current.next().length
+								? self.GUI.elements.$current.next()
+								: self.GUI.elements.$cells.first()
+				);
+			},
+			decrement: function() {
+				self.GUI.pointer.point(
+						self.GUI.elements.$current.prev().length
+								? self.GUI.elements.$current.prev()
+								: self.GUI.elements.$cells.last()
+				);
+			},
+			point: function($elem) {
+				if (self.GUI.elements.$current)
+					self.GUI.elements.$current.removeClass("pointed");
+
+				self.GUI.elements.$current = $elem;
+				self.GUI.elements.$current.addClass("pointed");
+			}
+		},
+		value: {
+			increment: function() {},
+			decrement: function() {},
+			read: function() {},
+			write: function() {}
 		}
-	}
+	};
+};
+
+BF.prototype.initialize = function() {
+	this.GUI.initialize();
+};
+
+BF.prototype.parse = function() {
+
 };
 
 $(document).ready(function() {
-	Brainfuck.initialize();
+	brainfuck = new BF(256, "wrap");
 });
