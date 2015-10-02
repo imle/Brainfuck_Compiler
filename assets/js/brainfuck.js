@@ -34,11 +34,13 @@ BF = function(size, gui, mode) {
 
 	this.pointer = 0;
 	this.instruction_pointer = 0;
+	this.in_pointer = 0;
 	this.halt = false;
 
 	this.array = (new Array(this.options.size)).fill(0);
 	this.program = "";
 	this.value = "";
+	this.std_in = "";
 
 	this.GUI = {
 		elements: {
@@ -52,8 +54,8 @@ BF = function(size, gui, mode) {
 		initialize: function() {
 			self.GUI.elements.template = $("#template_bf_column").html();
 			self.GUI.elements.$container = $("#brainfuck_container");
-			self.GUI.elements.$output = $("#output").find("input");
-			self.GUI.elements.$input = $("#input").find("input");
+			self.GUI.elements.$output = $("#output");
+			self.GUI.elements.$input = $("#input");
 
 			if (self.gui) {
 				var html = "";
@@ -111,9 +113,13 @@ BF = function(size, gui, mode) {
 				self.GUI.elements.$current.find(".ascii").text(String.fromCharCode(value));
 			}
 		},
-		output: {
+		io: {
 			write: function() {
 				self.GUI.elements.$output.val(self.value);
+				console.log(self.value);
+			},
+			read: function() {
+				self.std_in = self.GUI.elements.$input.val();
 			}
 		},
 		clear: function() {
@@ -134,8 +140,12 @@ BF = function(size, gui, mode) {
 			self.array.fill(0);
 			self.pointer = 0;
 			self.instruction_pointer = 0;
-			self.value = "";
+			self.in_pointer = 0;
 			self.program = "";
+			self.value = "";
+			self.std_in = "";
+			self.halt = false;
+
 			self.GUI.clear();
 		},
 		/**
@@ -181,22 +191,19 @@ BF.prototype.throwError = function(err_id, fatal) {
 };
 
 BF.prototype.parse = function(input) {
-	if (input)
-		this.program = input;
+	this.program = input;
+	this.GUI.io.read();
 
-	while (!this.halt) {
-		if (this.program.charAt(this.instruction_pointer) == "") {
-			this.options.on_finish();
-			return;
-		}
-
+	while (!this.halt && this.program.charAt(this.instruction_pointer) != "") {
 		this.execute();
 		this.instruction_pointer++;
 	}
+
+	this.options.on_finish();
 };
 
 BF.prototype.execute = function() {
-	//console.log(Util.parse.highlight(this.program, this.instruction_pointer));
+	console.log(this.program.charAt(this.instruction_pointer));
 
 	switch (this.program.charAt(this.instruction_pointer)) {
 		case ">": this.incrementPointer();  break;
@@ -206,10 +213,7 @@ BF.prototype.execute = function() {
 		case "[": this.jumpForward();       break;
 		case "]": this.jumpBack();          break;
 		case ".": this.write();             break;
-		case ",":
-			this.halt = true;
-			this.read();
-			break;
+		case ",": this.read();              break;
 	}
 };
 
@@ -265,24 +269,17 @@ BF.prototype.jumpBack = function() {
 
 BF.prototype.write = function() {
 	this.value += String.fromCharCode(this.array[this.pointer]);
-	this.GUI.output.write();
+	this.GUI.io.write();
 };
 
 BF.prototype.read = function() {
-	var self = this;
-	$(this.GUI.elements.$input).prop("disabled", false).focus();
+	if (this.in_pointer >= this.std_in.length) {
+		this.halt = true;
+		return;
+	}
 
-	this.GUI.elements.$input.keypress(function(e) {
-		$(this).prop("disabled", true).blur();
-
-		self.array[self.pointer] = e.which;
-		self.GUI.value.write(self.array[self.pointer]);
-
-		$(this).val("");
-
-		self.halt = false;
-		self.parse();
-	});
+	this.array[this.pointer] = this.std_in.charCodeAt(this.in_pointer++);
+	this.GUI.value.write(this.array[this.pointer]);
 };
 
 
@@ -291,11 +288,14 @@ $(document).ready(function() {
 	brainfuck = new BF(100);
 
 	$("#brainfuck_run").click(function() {
+		var $input = $("#input");
 		var $elem = $(this).parent().addClass("running");
 		$elem.find("textarea").prop("disabled", true);
+		$input.prop("disabled", true);
 
 		brainfuck.setCallback(function() {
 			$elem.removeClass("running").find("textarea").prop("disabled", false);
+			$input.prop("disabled", false);
 		});
 
 		brainfuck.parse($elem.find("textarea").val());

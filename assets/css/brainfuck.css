@@ -16,24 +16,21 @@ body {
     padding-left: 2px;
     padding-right: 2px; }
     #brainfuck_outer_container #brainfuck_io_outer_container #brainfuck_program_input {
-      margin-bottom: 10px;
-      height: 44px; }
+      margin-bottom: 10px; }
       #brainfuck_outer_container #brainfuck_io_outer_container #brainfuck_program_input.running #brainfuck_run {
         background-color: #1E74FF;
         cursor: default; }
       #brainfuck_outer_container #brainfuck_io_outer_container #brainfuck_program_input textarea {
         width: 94%;
-        resize: none;
-        height: 100%;
-        border: 2px solid black; }
+        margin-bottom: 0; }
       #brainfuck_outer_container #brainfuck_io_outer_container #brainfuck_program_input #brainfuck_run {
         background-color: #1495FF;
         border: 2px solid black;
-        height: 100%;
         width: 5%;
         float: right;
         position: relative;
-        cursor: pointer; }
+        cursor: pointer;
+        height: 100px; }
         #brainfuck_outer_container #brainfuck_io_outer_container #brainfuck_program_input #brainfuck_run div {
           width: 0;
           height: 0;
@@ -45,17 +42,12 @@ body {
           top: 50%;
           margin-top: -10px;
           margin-left: -6px; }
-    #brainfuck_outer_container #brainfuck_io_outer_container #output,
-    #brainfuck_outer_container #brainfuck_io_outer_container #input {
-      height: 40px;
+    #brainfuck_outer_container #brainfuck_io_outer_container textarea {
       border: 2px solid black;
-      margin-bottom: 10px; }
-    #brainfuck_outer_container #brainfuck_io_outer_container input {
-      height: 100%;
-      width: 100%;
-      padding: 4px;
-      font-size: 18px;
-      border: none; }
+      margin-bottom: 10px;
+      resize: none;
+      height: 100px;
+      width: 100%; }
   #brainfuck_outer_container #brainfuck_container {
     width: 760px;
     margin: 0 auto; }
