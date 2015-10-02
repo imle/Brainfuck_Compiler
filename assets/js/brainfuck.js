@@ -116,7 +116,6 @@ BF = function(size, gui, mode) {
 		io: {
 			write: function() {
 				self.GUI.elements.$output.val(self.value);
-				console.log(self.value);
 			},
 			read: function() {
 				self.std_in = self.GUI.elements.$input.val();
@@ -203,8 +202,6 @@ BF.prototype.parse = function(input) {
 };
 
 BF.prototype.execute = function() {
-	console.log(this.program.charAt(this.instruction_pointer));
-
 	switch (this.program.charAt(this.instruction_pointer)) {
 		case ">": this.incrementPointer();  break;
 		case "<": this.decrementPointer();  break;
