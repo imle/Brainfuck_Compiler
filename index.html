@@ -8,7 +8,22 @@
 		<link rel="stylesheet" href="assets/css/brainfuck.css">
 	</head>
 	<body>
-		<div id="brainfuck_container">
+		<div id="brainfuck_outer_container">
+			<div id="brainfuck_io_outer_container">
+				<div id="brainfuck_program_input">
+					<textarea placeholder="program in"></textarea>
+					<div id="brainfuck_run">
+						<div></div>
+					</div>
+				</div>
+				<div id="input">
+					<input type="text" disabled="disabled" placeholder="console in">
+				</div>
+				<div id="output">
+					<input type="text" disabled="disabled" placeholder="program out">
+				</div>
+			</div>
+			<div id="brainfuck_container"></div>
 		</div>
 		<script type="text/template" id="template_bf_column">
 			<div class="data_cell">

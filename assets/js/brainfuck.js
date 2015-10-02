@@ -6,61 +6,95 @@ Util = {
 			return template.replace(/%(\w+)%/g, function (m, key) {
 				return data.hasOwnProperty(key) ? data[key] + "" : "";
 			});
+		},
+		highlight: function(str, pointer) {
+			return (str.substring(0, pointer) + " " + str.charAt(pointer) + " " + str.substring(pointer + 1)).trim();
 		}
 	}
 };
 
-BF = function(size, mode) {
+/**
+ *
+ * @param {int} size
+ * @param {boolean} [gui]
+ * @param {string} [mode]
+ * @constructor
+ */
+BF = function(size, gui, mode) {
 	var self = this;
 	this.modes = ["wrap", "error"];
 	this.default_mode = 0;
 
 	this.options = {
 		size: size,
-		mode: this.modes.indexOf(mode) !== false ? mode : this.modes[this.default_mode]
+		gui: typeof gui === "boolean" ? gui : false,
+		mode: this.modes.indexOf(mode) !== -1 ? mode : this.modes[this.default_mode],
+		on_finish: function() {}
 	};
 
-	this.array = new Array(this.options.size);
+	this.pointer = 0;
+	this.instruction_pointer = 0;
+	this.halt = false;
+
+	this.array = (new Array(this.options.size)).fill(0);
+	this.program = "";
+	this.value = "";
 
 	this.GUI = {
 		elements: {
 			template: "",
-			$cells: [],
+			$cells: null,
 			$container: null,
-			$current: null
+			$current: null,
+			$output: null,
+			$input: null
 		},
 		initialize: function() {
 			self.GUI.elements.template = $("#template_bf_column").html();
+			self.GUI.elements.$container = $("#brainfuck_container");
+			self.GUI.elements.$output = $("#output").find("input");
+			self.GUI.elements.$input = $("#input").find("input");
 
-			self.GUI.elements.$contianer = $("#brainfuck_container");
+			if (self.gui) {
+				var html = "";
+				for (var i = 0; i < self.options.size; i++) {
+					html += Util.parse.template(self.GUI.elements.template, {
+						number: i,
+						value: 0,
+						ascii: "" //String.fromCharCode(0)
+					});
+				}
 
-			var html = "";
-			for (var i = 0; i < self.options.size; i++) {
-				html += Util.parse.template(self.GUI.elements.template, {
-					number: i
-				});
+				self.GUI.elements.$container.html(html);
+				self.GUI.elements.$cells = self.GUI.elements.$container.children();
+				self.GUI.pointer.point(self.GUI.elements.$cells.first());
 			}
-
-			self.GUI.elements.$contianer.html(html);
-			self.GUI.elements.$cells = self.GUI.elements.$contianer.children();
-			self.GUI.pointer.point(self.GUI.elements.$cells.first());
 		},
 		pointer: {
 			increment: function() {
-				self.GUI.pointer.point(
-						self.GUI.elements.$current.next().length
-								? self.GUI.elements.$current.next()
-								: self.GUI.elements.$cells.first()
-				);
+				if (!self.gui)
+					return;
+
+				if (!self.GUI.elements.$current.next().length && self.options.mode == self.modes[0])
+					self.GUI.pointer.point(self.GUI.elements.$cells.first());
+
+				else
+					self.GUI.pointer.point(self.GUI.elements.$current.next());
 			},
 			decrement: function() {
-				self.GUI.pointer.point(
-						self.GUI.elements.$current.prev().length
-								? self.GUI.elements.$current.prev()
-								: self.GUI.elements.$cells.last()
-				);
+				if (!self.gui)
+					return;
+
+				if (!self.GUI.elements.$current.prev().length && self.options.mode == self.modes[0])
+					self.GUI.pointer.point(self.GUI.elements.$cells.last());
+
+				else
+					self.GUI.pointer.point(self.GUI.elements.$current.prev());
 			},
 			point: function($elem) {
+				if (!self.gui)
+					return;
+
 				if (self.GUI.elements.$current)
 					self.GUI.elements.$current.removeClass("pointed");
 
@@ -69,10 +103,56 @@ BF = function(size, mode) {
 			}
 		},
 		value: {
-			increment: function() {},
-			decrement: function() {},
-			read: function() {},
-			write: function() {}
+			write: function(value) {
+				if (!self.gui)
+					return;
+
+				self.GUI.elements.$current.find(".value").text(value);
+				self.GUI.elements.$current.find(".ascii").text(String.fromCharCode(value));
+			}
+		},
+		output: {
+			write: function() {
+				self.GUI.elements.$output.val(self.value);
+			}
+		},
+		clear: function() {
+			if (!self.gui)
+				return;
+
+			self.GUI.elements.$cells.find(".value").text("0");
+			self.GUI.elements.$cells.find(".ascii").text("");
+			self.GUI.pointer.point(self.GUI.elements.$cells.first());
+			self.GUI.elements.$output.val("");
+		}
+	};
+
+	this.initialize();
+
+	return {
+		clear: function() {
+			self.array.fill(0);
+			self.pointer = 0;
+			self.instruction_pointer = 0;
+			self.value = "";
+			self.program = "";
+			self.GUI.clear();
+		},
+		/**
+		 * Parse entire brainfuck program.
+		 * @param {string} input
+		 * @returns {Array}
+		 */
+		parse: function(input) {
+			this.clear();
+			self.parse(input.replace(/[^><\+\-\[\]\.,]/g, ""));
+		},
+		/**
+		 *
+		 * @param {function} callback
+		 */
+		setCallback: function(callback) {
+			self.options.on_finish = callback;
 		}
 	};
 };
@@ -81,10 +161,143 @@ BF.prototype.initialize = function() {
 	this.GUI.initialize();
 };
 
-BF.prototype.parse = function() {
+BF.prototype.throwError = function(err_id, fatal) {
+	fatal = typeof fatal === "boolean" ? fatal : false;
 
+	if (fatal) {
+		this.GUI.elements.$container.html("");
+		brainfuck = null;
+	}
+	var error;
+
+	switch (err_id) {
+		case 0:
+			error = "Index out of bounds exception. Instruction Number: " + self.instruction_pointer;
+			break;
+	}
+
+	if (error)
+		throw new Error("Error " + err_id + ": " + error)
 };
 
+BF.prototype.parse = function(input) {
+	if (input)
+		this.program = input;
+
+	while (!this.halt) {
+		if (this.program.charAt(this.instruction_pointer) == "") {
+			this.options.on_finish();
+			return;
+		}
+
+		this.execute();
+		this.instruction_pointer++;
+	}
+};
+
+BF.prototype.execute = function() {
+	//console.log(Util.parse.highlight(this.program, this.instruction_pointer));
+
+	switch (this.program.charAt(this.instruction_pointer)) {
+		case ">": this.incrementPointer();  break;
+		case "<": this.decrementPointer();  break;
+		case "+": this.incrementValue();    break;
+		case "-": this.decrementValue();    break;
+		case "[": this.jumpForward();       break;
+		case "]": this.jumpBack();          break;
+		case ".": this.write();             break;
+		case ",":
+			this.halt = true;
+			this.read();
+			break;
+	}
+};
+
+BF.prototype.incrementPointer = function() {
+	this.pointer++;
+
+	if (this.options.mode == this.modes[1] && this.pointer >= this.options.size)
+		this.throwError(0, true);
+
+	this.GUI.pointer.increment();
+};
+
+BF.prototype.decrementPointer = function() {
+	this.pointer--;
+
+	if (this.options.mode == this.modes[1] && this.pointer < 0)
+		this.throwError(0, true);
+
+	this.GUI.pointer.decrement();
+};
+
+BF.prototype.incrementValue = function() {
+	this.GUI.value.write(++(this.array[this.pointer]));
+};
+
+BF.prototype.decrementValue = function() {
+	this.GUI.value.write(--(this.array[this.pointer]));
+};
+
+BF.prototype.jumpForward = function() {
+	if (this.array[this.pointer] == 0) {
+		var nest_count = 1;
+		do {
+			this.instruction_pointer++;
+
+			nest_count += this.program.charAt(this.instruction_pointer) == "]" ? -1 :
+			              this.program.charAt(this.instruction_pointer) == "[" ? 1 : 0;
+		} while (nest_count != 0);
+	}
+};
+
+BF.prototype.jumpBack = function() {
+	if (this.array[this.pointer] != 0) {
+		var nest_count = 1;
+		do {
+			this.instruction_pointer--;
+
+			nest_count += this.program.charAt(this.instruction_pointer) == "[" ? -1 :
+			              this.program.charAt(this.instruction_pointer) == "]" ? 1 : 0;
+		} while (nest_count != 0);
+	}
+};
+
+BF.prototype.write = function() {
+	this.value += String.fromCharCode(this.array[this.pointer]);
+	this.GUI.output.write();
+};
+
+BF.prototype.read = function() {
+	var self = this;
+	$(this.GUI.elements.$input).prop("disabled", false).focus();
+
+	this.GUI.elements.$input.keypress(function(e) {
+		$(this).prop("disabled", true).blur();
+
+		self.array[self.pointer] = e.which;
+		self.GUI.value.write(self.array[self.pointer]);
+
+		$(this).val("");
+
+		self.halt = false;
+		self.parse();
+	});
+};
+
+
+
 $(document).ready(function() {
-	brainfuck = new BF(256, "wrap");
+	brainfuck = new BF(100);
+
+	$("#brainfuck_run").click(function() {
+		var $elem = $(this).parent().addClass("running");
+		$elem.find("textarea").prop("disabled", true);
+
+		brainfuck.setCallback(function() {
+			$elem.removeClass("running").find("textarea").prop("disabled", false);
+		});
+
+		brainfuck.parse($elem.find("textarea").val());
+	});
 });
