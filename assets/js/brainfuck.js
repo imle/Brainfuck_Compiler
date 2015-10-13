@@ -35,7 +35,6 @@ BF = function(size, gui, mode) {
 	this.pointer = 0;
 	this.instruction_pointer = 0;
 	this.in_pointer = 0;
-	this.halt = false;
 
 	this.array = (new Array(this.options.size)).fill(0);
 	this.program = "";
@@ -57,7 +56,7 @@ BF = function(size, gui, mode) {
 			self.GUI.elements.$output = $("#output");
 			self.GUI.elements.$input = $("#input");
 
-			if (self.gui) {
+			if (self.options.gui) {
 				var html = "";
 				for (var i = 0; i < self.options.size; i++) {
 					html += Util.parse.template(self.GUI.elements.template, {
@@ -74,7 +73,7 @@ BF = function(size, gui, mode) {
 		},
 		pointer: {
 			increment: function() {
-				if (!self.gui)
+				if (!self.options.gui)
 					return;
 
 				if (!self.GUI.elements.$current.next().length && self.options.mode == self.modes[0])
@@ -84,7 +83,7 @@ BF = function(size, gui, mode) {
 					self.GUI.pointer.point(self.GUI.elements.$current.next());
 			},
 			decrement: function() {
-				if (!self.gui)
+				if (!self.options.gui)
 					return;
 
 				if (!self.GUI.elements.$current.prev().length && self.options.mode == self.modes[0])
@@ -94,7 +93,7 @@ BF = function(size, gui, mode) {
 					self.GUI.pointer.point(self.GUI.elements.$current.prev());
 			},
 			point: function($elem) {
-				if (!self.gui)
+				if (!self.options.gui)
 					return;
 
 				if (self.GUI.elements.$current)
@@ -106,7 +105,7 @@ BF = function(size, gui, mode) {
 		},
 		value: {
 			write: function(value) {
-				if (!self.gui)
+				if (!self.options.gui)
 					return;
 
 				self.GUI.elements.$current.find(".value").text(value);
@@ -115,6 +114,9 @@ BF = function(size, gui, mode) {
 		},
 		io: {
 			write: function() {
+				if (!self.options.gui)
+					return;
+
 				self.GUI.elements.$output.val(self.value);
 			},
 			read: function() {
@@ -122,7 +124,7 @@ BF = function(size, gui, mode) {
 			}
 		},
 		clear: function() {
-			if (!self.gui)
+			if (!self.options.gui)
 				return;
 
 			self.GUI.elements.$cells.find(".value").text("0");
@@ -136,25 +138,17 @@ BF = function(size, gui, mode) {
 
 	return {
 		clear: function() {
-			self.array.fill(0);
-			self.pointer = 0;
-			self.instruction_pointer = 0;
-			self.in_pointer = 0;
-			self.program = "";
-			self.value = "";
-			self.std_in = "";
-			self.halt = false;
-
-			self.GUI.clear();
+			self.clear();
 		},
 		/**
 		 * Parse entire brainfuck program.
+		 * @param {string} program
 		 * @param {string} input
-		 * @returns {Array}
+         * @returns {Array}
 		 */
-		parse: function(input) {
-			this.clear();
-			self.parse(input.replace(/[^><\+\-\[\]\.,]/g, ""));
+		parse: function(program, input) {
+			self.clear();
+			self.parse(program.replace(/[^><\+\-\[\]\.,]/g, ""), input);
 		},
 		/**
 		 *
@@ -164,6 +158,18 @@ BF = function(size, gui, mode) {
 			self.options.on_finish = callback;
 		}
 	};
+};
+
+BF.prototype.clear = function() {
+	this.array.fill(0);
+	this.pointer = 0;
+	this.instruction_pointer = 0;
+	this.in_pointer = 0;
+	this.program = "";
+	this.value = "";
+	this.std_in = "";
+
+	this.GUI.clear();
 };
 
 BF.prototype.initialize = function() {
@@ -189,16 +195,20 @@ BF.prototype.throwError = function(err_id, fatal) {
 		throw new Error("Error " + err_id + ": " + error)
 };
 
-BF.prototype.parse = function(input) {
-	this.program = input;
-	this.GUI.io.read();
+BF.prototype.parse = function(program, input) {
+	this.program = program;
 
-	while (!this.halt && this.program.charAt(this.instruction_pointer) != "") {
+	if (!input)
+		this.GUI.io.read();
+	else
+		this.std_in = input;
+
+	while (this.program.charAt(this.instruction_pointer) != "") {
 		this.execute();
 		this.instruction_pointer++;
 	}
 
-	this.options.on_finish();
+	this.options.on_finish(this.value);
 };
 
 BF.prototype.execute = function() {
@@ -271,13 +281,23 @@ BF.prototype.write = function() {
 
 BF.prototype.read = function() {
 	if (this.in_pointer >= this.std_in.length) {
-		this.halt = true;
+		//this.halt = true;
 		return;
 	}
 
 	this.array[this.pointer] = this.std_in.charCodeAt(this.in_pointer++);
 	this.GUI.value.write(this.array[this.pointer]);
 };
+
+//brainfuck = new BF(100);
+//
+//brainfuck.setCallback(function(output) {
+//	console.log(output);
+//});
+//
+//var test_input = "++++[>+++++<-]>[<+++++>-]+<+[ >[>+>+<<-]++>>[<<+>>-]>>>[-]++>[-]+ >>>+[[-]++++++>>>]<<<[[<++++++++<++>>-]+<.<[>----<-]<] <<[>>>>>[>>>[-]+++++++++<[>-<-]+++++++++>[-[<->-]+[<<<]]<[>+<-]>]<<-]<<- ] [Outputs square numbers from 0 to 10000. Daniel B Cristofani (cristofdathevanetdotcom) http://www.hevanet.com/cristofd/brainfuck/]";
+//
+//brainfuck.parse(test_input);
 
 
 
@@ -286,13 +306,15 @@ $(document).ready(function() {
 
 	$("#brainfuck_run").click(function() {
 		var $input = $("#input");
+		var $output = $("#output");
 		var $elem = $(this).parent().addClass("running");
 		$elem.find("textarea").prop("disabled", true);
 		$input.prop("disabled", true);
 
-		brainfuck.setCallback(function() {
+		brainfuck.setCallback(function(output) {
 			$elem.removeClass("running").find("textarea").prop("disabled", false);
 			$input.prop("disabled", false);
+			$output.val(output);
 		});
 
 		brainfuck.parse($elem.find("textarea").val());
